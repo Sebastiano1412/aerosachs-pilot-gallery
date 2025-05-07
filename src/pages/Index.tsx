@@ -93,13 +93,13 @@ const Index = ({ auth, uploadState, onLogout, onVotePhoto }: IndexProps) => {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-2 gradient-text">Foto Contest Aerosachs</h1>
           <div className="flex items-center justify-center space-x-2 text-lg mb-6">
-            <Calendar className="h-5 w-5 text-airline-accent" />
+            <Calendar className="h-5 w-5 text-airline-skyblue" />
             <span>
               Classifica <strong>{getMonthName(month)} {year}</strong>
             </span>
           </div>
           
-          {user ? (
+          {user && (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/dashboard">
                 <Button className="bg-airline-blue hover:bg-airline-lightblue">
@@ -107,21 +107,8 @@ const Index = ({ auth, uploadState, onLogout, onVotePhoto }: IndexProps) => {
                 </Button>
               </Link>
               <Link to="/upload">
-                <Button className="bg-airline-accent text-airline-blue hover:bg-airline-accent/80">
+                <Button className="bg-airline-skyblue text-airline-blue hover:bg-airline-skyblue/80">
                   Carica Foto
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/login">
-                <Button className="bg-airline-blue hover:bg-airline-lightblue">
-                  Accedi
-                </Button>
-              </Link>
-              <Link to="/register">
-                <Button className="bg-airline-accent text-airline-blue hover:bg-airline-accent/80">
-                  Registrati come Pilota
                 </Button>
               </Link>
             </div>
@@ -159,13 +146,13 @@ const Index = ({ auth, uploadState, onLogout, onVotePhoto }: IndexProps) => {
               </p>
               {user ? (
                 <Link to="/upload">
-                  <Button className="bg-airline-accent text-airline-blue hover:bg-airline-accent/80">
+                  <Button className="bg-airline-skyblue text-airline-blue hover:bg-airline-skyblue/80">
                     Carica la tua prima foto
                   </Button>
                 </Link>
               ) : (
                 <Link to="/register">
-                  <Button className="bg-airline-accent text-airline-blue hover:bg-airline-accent/80">
+                  <Button className="bg-airline-skyblue text-airline-blue hover:bg-airline-skyblue/80">
                     Registrati ora
                   </Button>
                 </Link>

@@ -9,7 +9,125 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      photos: {
+        Row: {
+          approved: boolean | null
+          callsign: string
+          created_at: string | null
+          description: string
+          id: string
+          image_url: string
+          title: string
+          upload_month: number
+          upload_year: number
+          uploader_name: string
+          user_id: string
+          vote_count: number | null
+        }
+        Insert: {
+          approved?: boolean | null
+          callsign: string
+          created_at?: string | null
+          description: string
+          id?: string
+          image_url: string
+          title: string
+          upload_month: number
+          upload_year: number
+          uploader_name: string
+          user_id: string
+          vote_count?: number | null
+        }
+        Update: {
+          approved?: boolean | null
+          callsign?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          image_url?: string
+          title?: string
+          upload_month?: number
+          upload_year?: number
+          uploader_name?: string
+          user_id?: string
+          vote_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          callsign: string
+          created_at: string | null
+          email: string
+          first_name: string
+          id: string
+          is_staff: boolean | null
+          last_name: string
+        }
+        Insert: {
+          callsign: string
+          created_at?: string | null
+          email: string
+          first_name: string
+          id?: string
+          is_staff?: boolean | null
+          last_name: string
+        }
+        Update: {
+          callsign?: string
+          created_at?: string | null
+          email?: string
+          first_name?: string
+          id?: string
+          is_staff?: boolean | null
+          last_name?: string
+        }
+        Relationships: []
+      }
+      votes: {
+        Row: {
+          created_at: string | null
+          id: string
+          photo_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          photo_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          photo_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

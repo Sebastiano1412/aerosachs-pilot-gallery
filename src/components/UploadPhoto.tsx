@@ -40,9 +40,9 @@ const UploadPhoto = ({ uploadState, onUpload }: UploadPhotoProps) => {
       return;
     }
     
-    // Check file size (max 5MB)
-    if (selectedFile.size > 5 * 1024 * 1024) {
-      showErrorToast("L'immagine non deve superare i 5MB");
+    // Check file size (max 20MB)
+    if (selectedFile.size > 20 * 1024 * 1024) {
+      showErrorToast("L'immagine non deve superare i 20MB");
       return;
     }
     
@@ -174,7 +174,7 @@ const UploadPhoto = ({ uploadState, onUpload }: UploadPhotoProps) => {
                       Clicca per selezionare o trascina un'immagine
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      JPG, PNG, GIF (max 5MB)
+                      JPG, PNG, GIF (max 20MB)
                     </p>
                     <Input
                       id="photo"
