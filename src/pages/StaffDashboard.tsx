@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -43,6 +44,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { AuthState, User, Photo } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StaffDashboardProps {
   auth: AuthState;
@@ -92,9 +94,22 @@ const StaffDashboard = ({
   const { data: pendingPhotos, isLoading: isLoadingPendingPhotos } = useQuery({
     queryKey: ['pendingPhotos'],
     queryFn: async () => {
-      // Replace with actual Supabase fetch
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return [] as Photo[];
+      try {
+        const { data, error } = await supabase
+          .from('photos')
+          .select('*')
+          .eq('approved', false)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
+        
+        return data as Photo[];
+      } catch (error) {
+        console.error('Error fetching pending photos:', error);
+        return [] as Photo[];
+      }
     },
     enabled: auth.isStaff,
   });
@@ -102,9 +117,21 @@ const StaffDashboard = ({
   const { data: allPhotos, isLoading: isLoadingAllPhotos } = useQuery({
     queryKey: ['allPhotos'],
     queryFn: async () => {
-      // Replace with actual Supabase fetch
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return [] as Photo[];
+      try {
+        const { data, error } = await supabase
+          .from('photos')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
+        
+        return data as Photo[];
+      } catch (error) {
+        console.error('Error fetching all photos:', error);
+        return [] as Photo[];
+      }
     },
     enabled: auth.isStaff,
   });
@@ -112,9 +139,29 @@ const StaffDashboard = ({
   const { data: users, isLoading: isLoadingUsers } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      // Replace with actual Supabase fetch
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return [] as User[];
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .order('callsign', { ascending: true });
+          
+        if (error) {
+          throw error;
+        }
+        
+        return data.map(user => ({
+          id: user.id,
+          email: user.email,
+          callsign: user.callsign,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          isStaff: user.is_staff,
+          createdAt: user.created_at
+        })) as User[];
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        return [] as User[];
+      }
     },
     enabled: auth.isStaff,
   });
@@ -164,7 +211,7 @@ const StaffDashboard = ({
 
   const editUserMutation = useMutation({
     mutationFn: () => {
-      if (!selectedUser) return Promise.reject("No user selected");
+      if (!selectedUser) return Promise.reject("Nessun utente selezionato");
       const userData: Partial<User> = {};
       if (editEmail !== selectedUser.email) userData.email = editEmail;
       if (editCallsign !== selectedUser.callsign) userData.callsign = editCallsign;
@@ -238,78 +285,92 @@ const StaffDashboard = ({
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="p-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Staff Dashboard</h1>
+        <h1 className="text-2xl font-bold">Dashboard Staff</h1>
         <Button variant="destructive" onClick={onLogout}>Logout</Button>
       </div>
 
       <Tabs defaultValue="pending" className="w-[90%] mx-auto space-y-4">
         <TabsList>
-          <TabsTrigger value="pending">Pending Photos</TabsTrigger>
-          <TabsTrigger value="all">All Photos</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="pending">Foto in Attesa</TabsTrigger>
+          <TabsTrigger value="all">Tutte le Foto</TabsTrigger>
+          <TabsTrigger value="users">Utenti</TabsTrigger>
+          <TabsTrigger value="settings">Impostazioni</TabsTrigger>
         </TabsList>
         
         <TabsContent value="pending" className="space-y-2">
-          <h2 className="text-xl font-semibold">Pending Photos</h2>
+          <h2 className="text-xl font-semibold">Foto in Attesa di Approvazione</h2>
           {isLoadingPendingPhotos ? (
-            <p>Loading pending photos...</p>
-          ) : (
+            <p>Caricamento foto in attesa...</p>
+          ) : pendingPhotos && pendingPhotos.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {pendingPhotos?.map((photo) => (
+              {pendingPhotos.map((photo) => (
                 <Card key={photo.id} className="bg-white shadow-md rounded-md overflow-hidden">
                   <CardContent className="p-4">
                     <img src={photo.imageUrl} alt={photo.title} className="w-full h-48 object-cover mb-2 rounded-md" />
                     <h3 className="text-lg font-semibold">{photo.title}</h3>
                     <p className="text-gray-600">{photo.description}</p>
+                    <p className="text-sm mt-1">Di: {photo.callsign} - {photo.uploaderName}</p>
                   </CardContent>
                   <CardFooter className="flex justify-between p-4">
                     <Button variant="ghost" onClick={() => handleApprove(photo.id)}>
                       <CheckCircle className="mr-2 h-4 w-4" />
-                      Approve
+                      Approva
                     </Button>
                     <Button variant="ghost" onClick={() => handleReject(photo.id)}>
                       <XCircle className="mr-2 h-4 w-4" />
-                      Reject
+                      Rifiuta
                     </Button>
                   </CardFooter>
                 </Card>
               ))}
             </div>
+          ) : (
+            <p>Nessuna foto in attesa di approvazione</p>
           )}
         </TabsContent>
 
         <TabsContent value="all" className="space-y-2">
-          <h2 className="text-xl font-semibold">All Photos</h2>
+          <h2 className="text-xl font-semibold">Tutte le Foto</h2>
           {isLoadingAllPhotos ? (
-            <p>Loading all photos...</p>
-          ) : (
+            <p>Caricamento di tutte le foto...</p>
+          ) : allPhotos && allPhotos.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {allPhotos?.map((photo) => (
+              {allPhotos.map((photo) => (
                 <Card key={photo.id} className="bg-white shadow-md rounded-md overflow-hidden">
                   <CardContent className="p-4">
                     <img src={photo.imageUrl} alt={photo.title} className="w-full h-48 object-cover mb-2 rounded-md" />
                     <h3 className="text-lg font-semibold">{photo.title}</h3>
                     <p className="text-gray-600">{photo.description}</p>
+                    <div className="flex justify-between mt-2">
+                      <p className="text-sm">Di: {photo.callsign}</p>
+                      <p className="text-sm flex items-center">
+                        <Star className="h-4 w-4 text-yellow-500 mr-1" /> {photo.voteCount}
+                      </p>
+                    </div>
+                    <div className="mt-2">
+                      <span className={`px-2 py-1 rounded-full text-xs ${photo.approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {photo.approved ? 'Approvata' : 'In attesa'}
+                      </span>
+                    </div>
                   </CardContent>
                   <CardFooter className="flex justify-end p-4">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive">
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          Elimina
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogTitle>Sei sicuro?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the photo from our servers.
+                            Questa azione non può essere annullata. La foto verrà eliminata permanentemente dai nostri server.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeletePhoto(photo.id)}>Delete</AlertDialogAction>
+                          <AlertDialogCancel>Annulla</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeletePhoto(photo.id)}>Elimina</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -317,24 +378,26 @@ const StaffDashboard = ({
                 </Card>
               ))}
             </div>
+          ) : (
+            <p>Nessuna foto presente</p>
           )}
         </TabsContent>
 
         <TabsContent value="users" className="space-y-2">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Users</h2>
+            <h2 className="text-xl font-semibold">Utenti</h2>
             <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <UserPlus className="mr-2 h-4 w-4" />
-                  Create User
+                  Crea Utente
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Create User</DialogTitle>
+                  <DialogTitle>Crea Utente</DialogTitle>
                   <DialogDescription>
-                    Create a new user account.
+                    Crea un nuovo account utente.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -352,13 +415,13 @@ const StaffDashboard = ({
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="firstName" className="text-right">
-                      First Name
+                      Nome
                     </Label>
                     <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="col-span-3" />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="lastName" className="text-right">
-                      Last Name
+                      Cognome
                     </Label>
                     <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} className="col-span-3" />
                   </div>
@@ -370,31 +433,31 @@ const StaffDashboard = ({
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button onClick={handleCreateUser}>Create User</Button>
+                  <Button onClick={handleCreateUser}>Crea Utente</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
           {isLoadingUsers ? (
-            <p>Loading users...</p>
-          ) : (
+            <p>Caricamento utenti...</p>
+          ) : users && users.length > 0 ? (
             <div className="rounded-md border">
               <Table>
-                <TableCaption>A list of your registered users.</TableCaption>
+                <TableCaption>Elenco degli utenti registrati.</TableCaption>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[100px]">ID</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Callsign</TableHead>
-                    <TableHead>First Name</TableHead>
-                    <TableHead>Last Name</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Cognome</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users?.map((user) => (
+                  {users.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.id}</TableCell>
+                      <TableCell className="font-medium">{user.id.substring(0, 8)}...</TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>{user.callsign}</TableCell>
                       <TableCell>{user.firstName}</TableCell>
@@ -402,25 +465,25 @@ const StaffDashboard = ({
                       <TableCell className="text-right">
                         <Button variant="ghost" onClick={() => handleOpenEditUser(user)}>
                           <Edit className="mr-2 h-4 w-4" />
-                          Edit
+                          Modifica
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="destructive">
                               <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
+                              Elimina
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                              <AlertDialogTitle>Sei sicuro?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the user from our servers.
+                                Questa azione non può essere annullata. L'utente verrà eliminato permanentemente dai nostri server.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>Delete</AlertDialogAction>
+                              <AlertDialogCancel>Annulla</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>Elimina</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -430,32 +493,34 @@ const StaffDashboard = ({
                 </TableBody>
               </Table>
             </div>
+          ) : (
+            <p>Nessun utente registrato</p>
           )}
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-2">
-          <h2 className="text-xl font-semibold">Settings</h2>
+          <h2 className="text-xl font-semibold">Impostazioni</h2>
           <Card className="bg-white shadow-md rounded-md overflow-hidden">
             <CardContent className="p-4">
-              <h3 className="text-lg font-semibold mb-2">Danger Zone</h3>
-              <p className="text-gray-600 mb-4">Be careful with these actions.</p>
+              <h3 className="text-lg font-semibold mb-2">Area Pericolosa</h3>
+              <p className="text-gray-600 mb-4">Fai attenzione con queste azioni.</p>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive">
                     <RefreshCw className="mr-2 h-4 w-4" />
-                    Reset Photos
+                    Elimina Tutte le Foto
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogTitle>Sei assolutamente sicuro?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete all photos from our servers.
+                      Questa azione non può essere annullata. Verranno eliminate tutte le foto dai nostri server.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleResetPhotos}>Reset Photos</AlertDialogAction>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleResetPhotos}>Elimina Tutte le Foto</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -468,9 +533,9 @@ const StaffDashboard = ({
       <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
+            <DialogTitle>Modifica Utente</DialogTitle>
             <DialogDescription>
-              Edit an existing user account.
+              Modifica un account utente esistente.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -488,25 +553,25 @@ const StaffDashboard = ({
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="editFirstName" className="text-right">
-                First Name
+                Nome
               </Label>
               <Input id="editFirstName" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="editLastName" className="text-right">
-                Last Name
+                Cognome
               </Label>
               <Input id="editLastName" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="isStaff" className="text-right">
-                Is Staff
+                Staff
               </Label>
               <Input id="isStaff" type="checkbox" checked={isStaff} onChange={(e) => setIsStaff(e.target.checked)} className="col-span-3" />
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleEditUser}>Edit User</Button>
+            <Button onClick={handleEditUser}>Salva Modifiche</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

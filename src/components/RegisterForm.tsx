@@ -9,6 +9,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { AuthState } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RegisterFormProps {
   onRegister: (email: string, callsign: string, firstName: string, lastName: string, password: string) => Promise<void>;
@@ -66,12 +67,44 @@ const RegisterForm = ({ onRegister }: RegisterFormProps) => {
     setIsLoading(true);
     
     try {
-      await onRegister(email, callsign, firstName, lastName, password);
+      // Register with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            callsign,
+            first_name: firstName,
+            last_name: lastName
+          }
+        }
+      });
+
+      if (authError) {
+        throw authError;
+      }
+
+      if (authData.user) {
+        // Update users table with additional information
+        const { error: profileError } = await supabase
+          .from('users')
+          .update({ 
+            callsign,
+            first_name: firstName,
+            last_name: lastName
+          })
+          .eq('id', authData.user.id);
+
+        if (profileError) {
+          throw profileError;
+        }
+      }
+
       showSuccessToast("Registrazione completata con successo!");
       navigate("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error);
-      showErrorToast("Errore durante la registrazione. Riprova.");
+      showErrorToast(error.message || "Errore durante la registrazione. Riprova.");
     } finally {
       setIsLoading(false);
     }
@@ -163,7 +196,7 @@ const RegisterForm = ({ onRegister }: RegisterFormProps) => {
               </div>
               <Button
                 type="submit"
-                className="w-full bg-airline-accent text-airline-blue hover:bg-airline-skyblue"
+                className="w-full bg-airline-blue hover:bg-airline-lightblue"
                 disabled={isLoading}
               >
                 {isLoading ? "Registrazione in corso..." : "Registrati"}

@@ -9,6 +9,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { AuthState } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -38,12 +39,20 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
     setIsLoading(true);
     
     try {
-      await onLogin(email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
       showSuccessToast("Accesso effettuato con successo!");
       navigate("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
-      showErrorToast("Errore di accesso. Controlla email e password.");
+      showErrorToast(error.message || "Errore di accesso. Controlla email e password.");
     } finally {
       setIsLoading(false);
     }

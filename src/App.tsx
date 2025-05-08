@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { AuthState, UploadState, User, Photo } from "@/types";
 import { getCurrentMonthYear, MAX_UPLOADS_PER_MONTH, MAX_VOTES_PER_USER } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import StaffDashboard from "./pages/StaffDashboard";
@@ -16,93 +18,11 @@ import RegisterForm from "./components/RegisterForm";
 import StaffLogin from "./components/StaffLogin";
 import UploadPhoto from "./components/UploadPhoto";
 
-const queryClient = new QueryClient();
+// Updated upload limit and vote limit constants
+const MAX_UPLOADS_PER_MONTH = 3;
+const MAX_VOTES_PER_USER = 3;
 
-// This is a placeholder for Supabase Integration
-const supabaseIntegration = {
-  login: async (email: string, password: string): Promise<User> => {
-    // This would be replaced with actual Supabase auth
-    console.log("Login:", email, password);
-    throw new Error("Not implemented - requires Supabase");
-  },
-  
-  register: async (email: string, callsign: string, firstName: string, lastName: string, password: string): Promise<User> => {
-    // This would be replaced with actual Supabase auth
-    console.log("Register:", email, callsign, firstName, lastName, password);
-    throw new Error("Not implemented - requires Supabase");
-  },
-  
-  staffLogin: (password: string): boolean => {
-    // In real implementation, this would set some session state in Supabase
-    return password === "asxfoto10";
-  },
-  
-  uploadPhoto: async (userId: string, title: string, description: string, file: File): Promise<void> => {
-    // This would be replaced with actual Supabase storage and database
-    console.log("Upload photo:", userId, title, description, file);
-    throw new Error("Not implemented - requires Supabase");
-  },
-  
-  votePhoto: async (userId: string, photoId: string): Promise<void> => {
-    // This would update votes in Supabase
-    console.log("Vote photo:", userId, photoId);
-    throw new Error("Not implemented - requires Supabase");
-  },
-  
-  approvePhoto: async (photoId: string): Promise<void> => {
-    // This would update the photo status in Supabase
-    console.log("Approve photo:", photoId);
-    throw new Error("Not implemented - requires Supabase");
-  },
-  
-  rejectPhoto: async (photoId: string): Promise<void> => {
-    // This would delete the photo from Supabase
-    console.log("Reject photo:", photoId);
-    throw new Error("Not implemented - requires Supabase");
-  },
-  
-  deletePhoto: async (photoId: string): Promise<void> => {
-    // This would delete the photo from Supabase
-    console.log("Delete photo:", photoId);
-    throw new Error("Not implemented - requires Supabase");
-  },
-  
-  deleteUser: async (userId: string): Promise<void> => {
-    // This would delete the user from Supabase
-    console.log("Delete user:", userId);
-    throw new Error("Not implemented - requires Supabase");
-  },
-  
-  createUser: async (email: string, callsign: string, firstName: string, lastName: string, password: string): Promise<void> => {
-    // This would create a user in Supabase
-    console.log("Create user:", email, callsign, firstName, lastName, password);
-    throw new Error("Not implemented - requires Supabase");
-  },
-  
-  editUser: async (userId: string, userData: Partial<User>): Promise<void> => {
-    // This would update user in Supabase
-    console.log("Edit user:", userId, userData);
-    throw new Error("Not implemented - requires Supabase");
-  },
-  
-  resetPhotos: async (): Promise<void> => {
-    // This would reset all photos in Supabase
-    console.log("Reset photos");
-    throw new Error("Not implemented - requires Supabase");
-  },
-  
-  getUserUploadsCount: async (userId: string): Promise<number> => {
-    // This would count user uploads for current month
-    console.log("Get user uploads count:", userId);
-    return 0;
-  },
-  
-  getUserVotesCount: async (userId: string): Promise<number> => {
-    // This would count user votes for current month
-    console.log("Get user votes count:", userId);
-    return 0;
-  }
-};
+const queryClient = new QueryClient();
 
 function AppRoutes() {
   const [auth, setAuth] = useState<AuthState>({
@@ -120,20 +40,104 @@ function AppRoutes() {
   
   const navigate = useNavigate();
   
-  // Simulate checking session on app load
+  // Check session on app load
   useEffect(() => {
-    // In real app, this would check Supabase session
     const checkSession = async () => {
       try {
-        // Simulate delay
-        await new Promise(r => setTimeout(r, 500));
-        
-        // In real app, this would get session from Supabase
-        setAuth({
-          user: null,
-          isStaff: false,
-          isLoading: false
-        });
+        // Set up auth state listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (session && session.user) {
+              // Get user data from our users table
+              const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+              
+              if (userError) {
+                console.error("Error fetching user data:", userError);
+                setAuth({
+                  user: null,
+                  isStaff: false,
+                  isLoading: false
+                });
+                return;
+              }
+
+              // Create user object from auth and database data
+              const user: User = {
+                id: session.user.id,
+                email: session.user.email || '',
+                callsign: userData.callsign,
+                firstName: userData.first_name,
+                lastName: userData.last_name,
+                isStaff: userData.is_staff || false,
+                createdAt: userData.created_at
+              };
+
+              setAuth({
+                user,
+                isStaff: userData.is_staff || false,
+                isLoading: false
+              });
+            } else {
+              setAuth({
+                user: null,
+                isStaff: false,
+                isLoading: false
+              });
+            }
+          }
+        );
+
+        // Check for existing session on initial load
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+          // Get user data from our users table
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (userError) {
+            console.error("Error fetching user data:", userError);
+            setAuth({
+              user: null,
+              isStaff: false,
+              isLoading: false
+            });
+            return;
+          }
+
+          // Create user object from auth and database data
+          const user: User = {
+            id: session.user.id,
+            email: session.user.email || '',
+            callsign: userData.callsign,
+            firstName: userData.first_name,
+            lastName: userData.last_name,
+            isStaff: userData.is_staff || false,
+            createdAt: userData.created_at
+          };
+
+          setAuth({
+            user,
+            isStaff: userData.is_staff || false,
+            isLoading: false
+          });
+        } else {
+          setAuth({
+            user: null,
+            isStaff: false,
+            isLoading: false
+          });
+        }
+
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (error) {
         console.error("Session check error:", error);
         setAuth({
@@ -161,14 +165,34 @@ function AppRoutes() {
       }
       
       try {
-        // In real app, these would be actual queries to Supabase
-        const uploadCount = await supabaseIntegration.getUserUploadsCount(auth.user.id);
-        const votesUsed = await supabaseIntegration.getUserVotesCount(auth.user.id);
+        const { month, year } = getCurrentMonthYear();
+
+        // Get upload count
+        const { count: uploadCount, error: uploadError } = await supabase
+          .from('photos')
+          .select('id', { count: 'exact' })
+          .eq('user_id', auth.user.id)
+          .eq('upload_month', month)
+          .eq('upload_year', year);
         
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        // Get votes count
+        const { count: votesUsed, error: votesError } = await supabase
+          .from('votes')
+          .select('id', { count: 'exact' })
+          .eq('user_id', auth.user.id);
+        
+        if (votesError) {
+          throw votesError;
+        }
+
         setUploadState({
-          uploadCount,
+          uploadCount: uploadCount || 0,
           uploadLimit: MAX_UPLOADS_PER_MONTH,
-          votesUsed,
+          votesUsed: votesUsed || 0,
           voteLimit: MAX_VOTES_PER_USER
         });
       } catch (error) {
@@ -179,23 +203,38 @@ function AppRoutes() {
     updateUploadState();
   }, [auth.user]);
   
-  const handleLogout = () => {
-    setAuth({
-      user: null,
-      isStaff: false,
-      isLoading: false
-    });
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
+      
+      setAuth({
+        user: null,
+        isStaff: false,
+        isLoading: false
+      });
+      
+      navigate("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
   
   const handleLogin = async (email: string, password: string) => {
     try {
-      const user = await supabaseIntegration.login(email, password);
-      setAuth({
-        user,
-        isStaff: false,
-        isLoading: false
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
+
+      if (error) {
+        throw error;
+      }
+
+      // The auth listener will update the user state
+      return data;
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -204,12 +243,40 @@ function AppRoutes() {
   
   const handleRegister = async (email: string, callsign: string, firstName: string, lastName: string, password: string) => {
     try {
-      const user = await supabaseIntegration.register(email, callsign, firstName, lastName, password);
-      setAuth({
-        user,
-        isStaff: false,
-        isLoading: false
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            callsign,
+            first_name: firstName,
+            last_name: lastName
+          }
+        }
       });
+
+      if (error) {
+        throw error;
+      }
+
+      // Update user table with additional info
+      if (data.user) {
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            callsign,
+            first_name: firstName,
+            last_name: lastName
+          })
+          .eq('id', data.user.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+      }
+
+      // The auth listener will update the user state
+      return data;
     } catch (error) {
       console.error("Register error:", error);
       throw error;
@@ -217,7 +284,7 @@ function AppRoutes() {
   };
   
   const handleStaffLogin = (password: string) => {
-    const isValidStaff = supabaseIntegration.staffLogin(password);
+    const isValidStaff = password === "asxfoto10";
     if (isValidStaff) {
       setAuth({
         user: null,
@@ -231,7 +298,51 @@ function AppRoutes() {
     if (!auth.user) return;
     
     try {
-      await supabaseIntegration.uploadPhoto(auth.user.id, title, description, file);
+      // Create a unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${auth.user.id}/${Date.now()}.${fileExt}`;
+      
+      // Upload the file to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
+      
+      if (uploadError) {
+        throw uploadError;
+      }
+      
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('photos')
+        .getPublicUrl(fileName);
+      
+      if (!urlData || !urlData.publicUrl) {
+        throw new Error("Failed to get public URL");
+      }
+      
+      const { month, year } = getCurrentMonthYear();
+      
+      // Insert photo record in database
+      const { error: dbError } = await supabase
+        .from('photos')
+        .insert({
+          user_id: auth.user.id,
+          title,
+          description,
+          image_url: urlData.publicUrl,
+          callsign: auth.user.callsign,
+          uploader_name: `${auth.user.firstName} ${auth.user.lastName}`,
+          upload_month: month,
+          upload_year: year
+        });
+      
+      if (dbError) {
+        throw dbError;
+      }
       
       // Update upload count
       setUploadState(prev => ({
@@ -251,7 +362,26 @@ function AppRoutes() {
     if (!auth.user) return;
     
     try {
-      await supabaseIntegration.votePhoto(auth.user.id, photoId);
+      // Insert vote record
+      const { error } = await supabase
+        .from('votes')
+        .insert({
+          user_id: auth.user.id,
+          photo_id: photoId
+        });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Increment vote count on photo
+      const { error: updateError } = await supabase.rpc('increment_vote_count', {
+        photo_id: photoId
+      });
+      
+      if (updateError) {
+        throw updateError;
+      }
       
       // Update votes used
       setUploadState(prev => ({
@@ -269,7 +399,14 @@ function AppRoutes() {
   
   const handleApprovePhoto = async (photoId: string) => {
     try {
-      await supabaseIntegration.approvePhoto(photoId);
+      const { error } = await supabase
+        .from('photos')
+        .update({ approved: true })
+        .eq('id', photoId);
+      
+      if (error) {
+        throw error;
+      }
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['pendingPhotos'] });
@@ -283,7 +420,14 @@ function AppRoutes() {
   
   const handleRejectPhoto = async (photoId: string) => {
     try {
-      await supabaseIntegration.rejectPhoto(photoId);
+      const { error } = await supabase
+        .from('photos')
+        .delete()
+        .eq('id', photoId);
+      
+      if (error) {
+        throw error;
+      }
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['pendingPhotos'] });
@@ -298,7 +442,14 @@ function AppRoutes() {
   
   const handleDeletePhoto = async (photoId: string) => {
     try {
-      await supabaseIntegration.deletePhoto(photoId);
+      const { error } = await supabase
+        .from('photos')
+        .delete()
+        .eq('id', photoId);
+      
+      if (error) {
+        throw error;
+      }
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['pendingPhotos'] });
@@ -313,7 +464,11 @@ function AppRoutes() {
   
   const handleDeleteUser = async (userId: string) => {
     try {
-      await supabaseIntegration.deleteUser(userId);
+      // Delete from auth
+      const { error: adminError } = await supabase.auth.admin.deleteUser(userId);
+      if (adminError) {
+        throw adminError;
+      }
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -325,7 +480,37 @@ function AppRoutes() {
   
   const handleCreateUser = async (email: string, callsign: string, firstName: string, lastName: string, password: string) => {
     try {
-      await supabaseIntegration.createUser(email, callsign, firstName, lastName, password);
+      // Create user in auth
+      const { data, error } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          callsign,
+          first_name: firstName,
+          last_name: lastName
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+      
+      // Update the users table
+      if (data.user) {
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            callsign,
+            first_name: firstName,
+            last_name: lastName
+          })
+          .eq('id', data.user.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+      }
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -337,7 +522,21 @@ function AppRoutes() {
   
   const handleEditUser = async (userId: string, userData: Partial<User>) => {
     try {
-      await supabaseIntegration.editUser(userId, userData);
+      // Update users table
+      const { error } = await supabase
+        .from('users')
+        .update({
+          email: userData.email,
+          callsign: userData.callsign,
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          is_staff: userData.isStaff
+        })
+        .eq('id', userId);
+      
+      if (error) {
+        throw error;
+      }
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -349,7 +548,14 @@ function AppRoutes() {
   
   const handleResetPhotos = async () => {
     try {
-      await supabaseIntegration.resetPhotos();
+      const { error } = await supabase
+        .from('photos')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Dummy condition to delete all
+      
+      if (error) {
+        throw error;
+      }
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['pendingPhotos'] });
