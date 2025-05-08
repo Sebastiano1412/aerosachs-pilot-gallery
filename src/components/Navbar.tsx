@@ -1,38 +1,37 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Upload, User, Lock } from "lucide-react";
 import { AuthState } from "@/types";
 import { cn } from "@/lib/utils";
-
 interface NavbarProps {
   auth: AuthState;
   onLogout: () => void;
 }
-
-const Navbar = ({ auth, onLogout }: NavbarProps) => {
+const Navbar = ({
+  auth,
+  onLogout
+}: NavbarProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { user, isStaff } = auth;
-
+  const {
+    user,
+    isStaff
+  } = auth;
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
-
   const handleLogout = () => {
     onLogout();
     navigate("/");
     setMobileMenuOpen(false);
   };
-
-  return (
-    <nav className="bg-airline-blue text-white shadow-lg">
+  return <nav className="bg-airline-blue text-white shadow-lg">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center py-4">
           <Link to="/" className="flex items-center space-x-2">
             <div className="text-airline-skyblue font-bold text-2xl">Foto Contest</div>
-            <div className="font-light text-xl">Aerosachs</div>
+            <div className="text-airline-skyblue font-bold text-2xl">Aerosachs</div>
           </Link>
 
           {/* Desktop menu */}
@@ -41,28 +40,23 @@ const Navbar = ({ auth, onLogout }: NavbarProps) => {
               Home
             </Link>
             
-            {user ? (
-              <>
+            {user ? <>
                 <Link to="/dashboard" className="hover:text-airline-skyblue transition-colors">
                   Dashboard
                 </Link>
                 <Link to="/upload" className="hover:text-airline-skyblue transition-colors">
                   Carica Foto
                 </Link>
-                {isStaff && (
-                  <Link to="/staff" className="text-airline-skyblue hover:text-white transition-colors">
+                {isStaff && <Link to="/staff" className="text-airline-skyblue hover:text-white transition-colors">
                     Area Staff
-                  </Link>
-                )}
+                  </Link>}
                 <Button variant="outline" onClick={handleLogout} className="border-white text-white hover:bg-white hover:text-airline-blue">
                   Logout
                 </Button>
                 <div className="px-3 py-1 rounded-full bg-airline-lightblue">
                   {user.callsign}
                 </div>
-              </>
-            ) : (
-              <>
+              </> : <>
                 <Link to="/login" className="hover:text-airline-skyblue transition-colors">
                   Accedi
                 </Link>
@@ -77,8 +71,7 @@ const Navbar = ({ auth, onLogout }: NavbarProps) => {
                     Staff
                   </Button>
                 </Link>
-              </>
-            )}
+              </>}
           </div>
 
           {/* Mobile menu button */}
@@ -96,8 +89,7 @@ const Navbar = ({ auth, onLogout }: NavbarProps) => {
               Home
             </Link>
             
-            {user ? (
-              <>
+            {user ? <>
                 <Link to="/dashboard" className="py-2 hover:text-airline-skyblue transition-colors" onClick={() => setMobileMenuOpen(false)}>
                   Dashboard
                 </Link>
@@ -105,12 +97,10 @@ const Navbar = ({ auth, onLogout }: NavbarProps) => {
                   <Upload className="inline-block mr-2 h-4 w-4" />
                   Carica Foto
                 </Link>
-                {isStaff && (
-                  <Link to="/staff" className="py-2 text-airline-skyblue hover:text-white transition-colors" onClick={() => setMobileMenuOpen(false)}>
+                {isStaff && <Link to="/staff" className="py-2 text-airline-skyblue hover:text-white transition-colors" onClick={() => setMobileMenuOpen(false)}>
                     <Lock className="inline-block mr-2 h-4 w-4" />
                     Area Staff
-                  </Link>
-                )}
+                  </Link>}
                 <div className="py-2 flex items-center">
                   <User className="inline-block mr-2 h-4 w-4" />
                   {user.callsign} - {user.firstName}
@@ -118,9 +108,7 @@ const Navbar = ({ auth, onLogout }: NavbarProps) => {
                 <Button variant="outline" onClick={handleLogout} className="border-white text-white hover:bg-white hover:text-airline-blue">
                   Logout
                 </Button>
-              </>
-            ) : (
-              <>
+              </> : <>
                 <Link to="/login" className="py-2 hover:text-airline-skyblue transition-colors" onClick={() => setMobileMenuOpen(false)}>
                   Accedi
                 </Link>
@@ -135,13 +123,10 @@ const Navbar = ({ auth, onLogout }: NavbarProps) => {
                     Staff
                   </Button>
                 </Link>
-              </>
-            )}
+              </>}
           </div>
         </div>
       </div>
-    </nav>
-  );
+    </nav>;
 };
-
 export default Navbar;
