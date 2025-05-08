@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -58,6 +57,21 @@ interface StaffDashboardProps {
   onResetPhotos: () => Promise<void>;
 }
 
+interface SupabasePhoto {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  image_url: string;
+  callsign: string;
+  uploader_name: string;
+  upload_month: number;
+  upload_year: number;
+  approved: boolean;
+  vote_count: number;
+  created_at: string;
+}
+
 const StaffDashboard = ({
   auth,
   onLogout,
@@ -105,7 +119,23 @@ const StaffDashboard = ({
           throw error;
         }
         
-        return data as Photo[];
+        // Map Supabase data to our Photo type
+        const photos = (data as SupabasePhoto[]).map(photo => ({
+          id: photo.id,
+          userId: photo.user_id,
+          title: photo.title,
+          description: photo.description,
+          imageUrl: photo.image_url,
+          callsign: photo.callsign,
+          uploaderName: photo.uploader_name,
+          approved: photo.approved,
+          voteCount: photo.vote_count,
+          uploadMonth: photo.upload_month,
+          uploadYear: photo.upload_year,
+          createdAt: photo.created_at
+        }));
+        
+        return photos;
       } catch (error) {
         console.error('Error fetching pending photos:', error);
         return [] as Photo[];
@@ -127,7 +157,23 @@ const StaffDashboard = ({
           throw error;
         }
         
-        return data as Photo[];
+        // Map Supabase data to our Photo type
+        const photos = (data as SupabasePhoto[]).map(photo => ({
+          id: photo.id,
+          userId: photo.user_id,
+          title: photo.title,
+          description: photo.description,
+          imageUrl: photo.image_url,
+          callsign: photo.callsign,
+          uploaderName: photo.uploader_name,
+          approved: photo.approved,
+          voteCount: photo.vote_count,
+          uploadMonth: photo.upload_month,
+          uploadYear: photo.upload_year,
+          createdAt: photo.created_at
+        }));
+        
+        return photos;
       } catch (error) {
         console.error('Error fetching all photos:', error);
         return [] as Photo[];
@@ -297,6 +343,7 @@ const StaffDashboard = ({
           <TabsTrigger value="settings">Impostazioni</TabsTrigger>
         </TabsList>
         
+        
         <TabsContent value="pending" className="space-y-2">
           <h2 className="text-xl font-semibold">Foto in Attesa di Approvazione</h2>
           {isLoadingPendingPhotos ? (
@@ -312,11 +359,11 @@ const StaffDashboard = ({
                     <p className="text-sm mt-1">Di: {photo.callsign} - {photo.uploaderName}</p>
                   </CardContent>
                   <CardFooter className="flex justify-between p-4">
-                    <Button variant="ghost" onClick={() => handleApprove(photo.id)}>
+                    <Button variant="ghost" onClick={() => approvePhotoMutation.mutate(photo.id)}>
                       <CheckCircle className="mr-2 h-4 w-4" />
                       Approva
                     </Button>
-                    <Button variant="ghost" onClick={() => handleReject(photo.id)}>
+                    <Button variant="ghost" onClick={() => rejectPhotoMutation.mutate(photo.id)}>
                       <XCircle className="mr-2 h-4 w-4" />
                       Rifiuta
                     </Button>
@@ -370,7 +417,7 @@ const StaffDashboard = ({
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Annulla</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeletePhoto(photo.id)}>Elimina</AlertDialogAction>
+                          <AlertDialogAction onClick={() => deletePhotoMutation.mutate(photo.id)}>Elimina</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>

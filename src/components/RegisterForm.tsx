@@ -67,39 +67,7 @@ const RegisterForm = ({ onRegister }: RegisterFormProps) => {
     setIsLoading(true);
     
     try {
-      // Register with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            callsign,
-            first_name: firstName,
-            last_name: lastName
-          }
-        }
-      });
-
-      if (authError) {
-        throw authError;
-      }
-
-      if (authData.user) {
-        // Update users table with additional information
-        const { error: profileError } = await supabase
-          .from('users')
-          .update({ 
-            callsign,
-            first_name: firstName,
-            last_name: lastName
-          })
-          .eq('id', authData.user.id);
-
-        if (profileError) {
-          throw profileError;
-        }
-      }
-
+      await onRegister(email, callsign, firstName, lastName, password);
       showSuccessToast("Registrazione completata con successo!");
       navigate("/dashboard");
     } catch (error: any) {

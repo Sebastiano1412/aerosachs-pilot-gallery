@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { AuthState, UploadState, User, Photo } from "@/types";
-import { getCurrentMonthYear, MAX_UPLOADS_PER_MONTH, MAX_VOTES_PER_USER } from "@/lib/utils";
+import { getCurrentMonthYear, showErrorToast, showSuccessToast } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -234,7 +233,7 @@ function AppRoutes() {
       }
 
       // The auth listener will update the user state
-      return data;
+      return;
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -276,7 +275,7 @@ function AppRoutes() {
       }
 
       // The auth listener will update the user state
-      return data;
+      return;
     } catch (error) {
       console.error("Register error:", error);
       throw error;

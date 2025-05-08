@@ -39,15 +39,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        throw error;
-      }
-
+      await onLogin(email, password);
       showSuccessToast("Accesso effettuato con successo!");
       navigate("/dashboard");
     } catch (error: any) {
