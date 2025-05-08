@@ -462,7 +462,6 @@ function AppRoutes() {
   };
   
   const handleDeleteUser = async (userId: string) => {
-    // Fix: Remove the supabase.auth.admin.deleteUser call which is causing the type error
     try {
       // We can't use admin methods from the client
       // Instead, just delete from the users table
@@ -485,8 +484,7 @@ function AppRoutes() {
   
   const handleCreateUser = async (email: string, callsign: string, firstName: string, lastName: string, password: string) => {
     try {
-      // Fix: Remove the supabase.auth.admin.createUser call which is causing the type error
-      // Instead, we'll use the sign up method which is available on the client
+      // Use the sign up method which is available on the client
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
