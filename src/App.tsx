@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -358,11 +357,11 @@ function AppRoutes() {
         throw error;
       }
       
-      // Correzione: incrementiamo il contatore di voti
-      const { error: updateError } = await supabase.rpc(
-        'increment_vote_count',
-        { photo_id: photoId }
-      );
+      // Fix: Use direct SQL update instead of RPC to avoid type issues
+      const { error: updateError } = await supabase
+        .from('photos')
+        .update({ vote_count: supabase.sql`vote_count + 1` })
+        .eq('id', photoId);
       
       if (updateError) {
         throw updateError;
@@ -487,16 +486,17 @@ function AppRoutes() {
         throw error;
       }
       
-      // Update the users table
+      // Update the users table manually if needed
       if (data.user) {
         const { error: updateError } = await supabase
           .from('users')
-          .update({
+          .upsert({
+            id: data.user.id,
+            email,
             callsign,
             first_name: firstName,
             last_name: lastName
-          })
-          .eq('id', data.user.id);
+          });
 
         if (updateError) {
           throw updateError;
