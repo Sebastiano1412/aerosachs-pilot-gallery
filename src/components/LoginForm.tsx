@@ -9,7 +9,6 @@ import { showErrorToast, showSuccessToast } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { AuthState } from "@/types";
-import { supabase } from "@/integrations/supabase/client";
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
