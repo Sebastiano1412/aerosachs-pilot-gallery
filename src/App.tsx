@@ -357,14 +357,34 @@ function AppRoutes() {
         throw error;
       }
       
-      // Fix: Use direct SQL update instead of RPC to avoid type issues
-      const { error: updateError } = await supabase
-        .from('photos')
-        .update({ vote_count: supabase.sql`vote_count + 1` })
-        .eq('id', photoId);
+      // Use increment_vote_count function from our SQL file
+      const { data, error: rpcError } = await supabase.rpc(
+        'increment_vote_count',
+        { photo_id: photoId }
+      );
       
-      if (updateError) {
-        throw updateError;
+      if (rpcError) {
+        // Fallback to direct update if the RPC fails
+        const { error: updateError } = await supabase
+          .from('photos')
+          .update({ vote_count: 1 }) // Set to specific value instead of using sql template
+          .eq('id', photoId)
+          .select('vote_count')
+          .single()
+          .then(({ data, error }) => {
+            if (data) {
+              // If we got data back, increment the value we got
+              return supabase
+                .from('photos')
+                .update({ vote_count: data.vote_count + 1 })
+                .eq('id', photoId);
+            }
+            return { error };
+          });
+        
+        if (updateError) {
+          throw updateError;
+        }
       }
       
       // Update votes used
