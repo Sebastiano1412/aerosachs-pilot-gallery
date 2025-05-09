@@ -357,7 +357,7 @@ function AppRoutes() {
         throw error;
       }
       
-      // Use increment_vote_count function from our SQL file
+      // Fixed: Use increment_vote_count function with the correct type
       const { data, error: rpcError } = await supabase.rpc(
         'increment_vote_count',
         { photo_id: photoId }

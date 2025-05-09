@@ -133,6 +133,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      increment_vote_count: {
+        Args: { photo_id: string }
+        Returns: undefined
+      }
+      is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
       is_current_user: {
         Args: { user_id: string }
         Returns: boolean
