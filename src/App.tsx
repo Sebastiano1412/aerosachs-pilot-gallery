@@ -258,23 +258,7 @@ function AppRoutes() {
         throw error;
       }
 
-      // Update user table with additional info
-      if (data.user) {
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({
-            callsign,
-            first_name: firstName,
-            last_name: lastName
-          })
-          .eq('id', data.user.id);
-
-        if (updateError) {
-          throw updateError;
-        }
-      }
-
-      // The auth listener will update the user state
+      // Authentication success - the trigger we set up in the database will handle creating the user record
       return;
     } catch (error) {
       console.error("Register error:", error);
@@ -373,10 +357,11 @@ function AppRoutes() {
         throw error;
       }
       
-      // Increment vote count on photo
-      const { error: updateError } = await supabase.rpc('increment_vote_count', {
-        photo_id: photoId
-      });
+      // Correzione: utilizziamo direttamente una query SQL per incrementare il contatore
+      const { error: updateError } = await supabase
+        .from('photos')
+        .update({ vote_count: supabase.sql`vote_count + 1` })
+        .eq('id', photoId);
       
       if (updateError) {
         throw updateError;

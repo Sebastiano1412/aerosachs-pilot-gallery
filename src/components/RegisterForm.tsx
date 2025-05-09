@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import { showErrorToast, showSuccessToast } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { AuthState } from "@/types";
-import { supabase } from "@/integrations/supabase/client";
 
 interface RegisterFormProps {
   onRegister: (email: string, callsign: string, firstName: string, lastName: string, password: string) => Promise<void>;
