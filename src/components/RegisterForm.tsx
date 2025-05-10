@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { AuthState } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RegisterFormProps {
   onRegister: (email: string, callsign: string, firstName: string, lastName: string, password: string) => Promise<void>;
@@ -65,7 +67,28 @@ const RegisterForm = ({ onRegister }: RegisterFormProps) => {
     setIsLoading(true);
     
     try {
+      // Direct registration using Supabase for debugging purposes
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            callsign,
+            first_name: firstName,
+            last_name: lastName
+          }
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log("Registration successful:", data);
+      
+      // Also use the provided onRegister function
       await onRegister(email, callsign, firstName, lastName, password);
+      
       showSuccessToast("Registrazione completata con successo!");
       navigate("/dashboard");
     } catch (error: any) {
