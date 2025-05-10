@@ -43,10 +43,77 @@ function AppRoutes() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Set up auth state listener
+        // Set up auth state listener FIRST
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
+          (event, session) => {
+            console.log("Auth state changed:", event, session?.user?.id);
+            
             if (session && session.user) {
+              // Defer Supabase calls to prevent recursion
+              setTimeout(async () => {
+                try {
+                  // Get user data from our users table
+                  const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+                  
+                  if (userError) {
+                    console.error("Error fetching user data:", userError);
+                    setAuth({
+                      user: null,
+                      isStaff: false,
+                      isLoading: false
+                    });
+                    return;
+                  }
+
+                  // Create user object from auth and database data
+                  const user: User = {
+                    id: session.user.id,
+                    email: session.user.email || '',
+                    callsign: userData?.callsign || '',
+                    firstName: userData?.first_name || '',
+                    lastName: userData?.last_name || '',
+                    isStaff: userData?.is_staff || false,
+                    createdAt: userData?.created_at || new Date().toISOString()
+                  };
+
+                  console.log("User authenticated:", user);
+                  
+                  setAuth({
+                    user,
+                    isStaff: userData?.is_staff || false,
+                    isLoading: false
+                  });
+                } catch (error) {
+                  console.error("Error in deferred auth state check:", error);
+                  setAuth({
+                    user: null,
+                    isStaff: false,
+                    isLoading: false
+                  });
+                }
+              }, 0);
+            } else {
+              setAuth({
+                user: null,
+                isStaff: false,
+                isLoading: false
+              });
+            }
+          }
+        );
+
+        // THEN check for existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log("Initial session check:", session?.user?.id);
+        
+        if (session && session.user) {
+          // Defer Supabase calls to prevent recursion
+          setTimeout(async () => {
+            try {
               // Get user data from our users table
               const { data: userData, error: userError } = await supabase
                 .from('users')
@@ -68,64 +135,29 @@ function AppRoutes() {
               const user: User = {
                 id: session.user.id,
                 email: session.user.email || '',
-                callsign: userData.callsign,
-                firstName: userData.first_name,
-                lastName: userData.last_name,
-                isStaff: userData.is_staff || false,
-                createdAt: userData.created_at
+                callsign: userData?.callsign || '',
+                firstName: userData?.first_name || '',
+                lastName: userData?.last_name || '',
+                isStaff: userData?.is_staff || false,
+                createdAt: userData?.created_at || new Date().toISOString()
               };
 
+              console.log("Initial user loaded:", user);
+              
               setAuth({
                 user,
-                isStaff: userData.is_staff || false,
+                isStaff: userData?.is_staff || false,
                 isLoading: false
               });
-            } else {
+            } catch (error) {
+              console.error("Error in initial session check:", error);
               setAuth({
                 user: null,
                 isStaff: false,
                 isLoading: false
               });
             }
-          }
-        );
-
-        // Check for existing session on initial load
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && session.user) {
-          // Get user data from our users table
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (userError) {
-            console.error("Error fetching user data:", userError);
-            setAuth({
-              user: null,
-              isStaff: false,
-              isLoading: false
-            });
-            return;
-          }
-
-          // Create user object from auth and database data
-          const user: User = {
-            id: session.user.id,
-            email: session.user.email || '',
-            callsign: userData.callsign,
-            firstName: userData.first_name,
-            lastName: userData.last_name,
-            isStaff: userData.is_staff || false,
-            createdAt: userData.created_at
-          };
-
-          setAuth({
-            user,
-            isStaff: userData.is_staff || false,
-            isLoading: false
-          });
+          }, 0);
         } else {
           setAuth({
             user: null,
@@ -216,8 +248,10 @@ function AppRoutes() {
       });
       
       navigate("/");
+      showSuccessToast("Logout effettuato con successo");
     } catch (error) {
       console.error("Logout error:", error);
+      showErrorToast("Errore durante il logout. Riprova.");
     }
   };
   
@@ -233,9 +267,12 @@ function AppRoutes() {
       }
 
       // The auth listener will update the user state
+      showSuccessToast("Accesso effettuato con successo!");
+      navigate("/dashboard");
       return;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
+      showErrorToast(error.message || "Errore di accesso. Controlla email e password.");
       throw error;
     }
   };
@@ -259,9 +296,12 @@ function AppRoutes() {
       }
 
       // Authentication success - the trigger we set up in the database will handle creating the user record
+      showSuccessToast("Registrazione completata con successo!");
+      navigate("/dashboard");
       return;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Register error:", error);
+      showErrorToast(error.message || "Errore durante la registrazione. Riprova.");
       throw error;
     }
   };
@@ -357,13 +397,14 @@ function AppRoutes() {
         throw error;
       }
       
-      // Fixed: Use increment_vote_count function with the correct type
+      // Use increment_vote_count function with the correct type
       const { data, error: rpcError } = await supabase.rpc(
         'increment_vote_count',
         { photo_id: photoId }
       );
       
       if (rpcError) {
+        console.error("RPC error:", rpcError);
         // Fallback to direct update if the RPC fails
         const { error: updateError } = await supabase
           .from('photos')
@@ -395,8 +436,11 @@ function AppRoutes() {
       
       // Invalidate photos query to refetch
       queryClient.invalidateQueries({ queryKey: ['photos'] });
-    } catch (error) {
+      
+      showSuccessToast("Voto registrato con successo!");
+    } catch (error: any) {
       console.error("Vote error:", error);
+      showErrorToast(error.message || "Errore durante il voto. Riprova.");
       throw error;
     }
   };

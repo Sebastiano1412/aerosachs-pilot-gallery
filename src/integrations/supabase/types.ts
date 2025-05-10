@@ -145,6 +145,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      is_self: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
